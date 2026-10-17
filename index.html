@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de riesgo</title>
+<style>
+:root{--bg:#f3f4f7;--card:#fff;--text:#14181f;--muted:#6b7585;--line:#e1e4ea;--accent:#2f6fed;--up:#0e9f6e;--down:#e0364a;--sel:#e4ebfb;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c0f14;--card:#141922;--text:#e6eaf0;--muted:#8a94a6;--line:#232b38;--accent:#5b8def;--up:#26a69a;--down:#ef5350;--sel:#243149;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0c0f14;--card:#141922;--text:#e6eaf0;--muted:#8a94a6;--line:#232b38;--accent:#5b8def;--up:#26a69a;--down:#ef5350;--sel:#243149;color-scheme:dark}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:440px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:20px;margin:4px 0 16px}
+h2{font-size:13px;margin:0 0 8px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+label{display:block;color:var(--muted);font-size:13px;margin-bottom:12px}
+label:last-child{margin-bottom:0}
+input{display:block;width:100%;margin-top:5px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:11px 12px;font:600 18px ui-monospace,"SF Mono",Consolas,monospace}
+input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.rowh{display:flex;gap:10px;align-items:center}
+.rowh input{margin-top:0;text-transform:uppercase}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-shrink:0}
+.seg button{background:none;border:0;color:var(--muted);padding:11px 12px;font:inherit;font-size:14px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--sel);color:var(--text);font-weight:600}
+.liveRow{display:flex;align-items:baseline;gap:10px;margin-top:12px;flex-wrap:wrap}
+.liveRow .lbl{color:var(--muted);font-size:13px}
+.livePrice{font:700 22px ui-monospace,"SF Mono",Consolas,monospace}
+.livePrice.up{color:var(--up)} .livePrice.down{color:var(--down)}
+.status{margin-left:auto;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.status.ok .dot{background:var(--up)} .status.err .dot{background:var(--down)} .status.err{color:var(--down)}
+.lh{display:flex;justify-content:space-between;align-items:center}
+.follow{background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:3px 10px;font:600 12px system-ui,sans-serif;cursor:pointer}
+.follow.on{background:var(--sel);color:var(--up);border-color:transparent}
+.msg{color:var(--muted);font-size:14px;margin:0 2px 12px;min-height:1.4em}
+.msg.err{color:var(--down)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;color:var(--muted);font-size:13px}
+.badge{font-weight:700;font-size:12px;padding:3px 10px;border-radius:999px;color:#fff}
+.badge.long{background:var(--up)} .badge.short{background:var(--down)}
+.lbl{color:var(--muted);font-size:13px}
+.val{display:block;background:none;border:0;padding:0;color:var(--text);font:700 32px ui-monospace,"SF Mono",Consolas,monospace;cursor:pointer;text-align:left}
+.sub{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.sub b{display:block;color:var(--text);font:600 15px ui-monospace,"SF Mono",Consolas,monospace}
+.tg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.tg:first-of-type{border-top:0}
+.tg .k{font-weight:700;width:34px}
+.tg .g{flex:1;color:var(--muted);font-size:13px}
+.tg .p{background:none;border:0;padding:0;color:var(--text);font:700 18px ui-monospace,"SF Mono",Consolas,monospace;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+.hint{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+@media (pointer:coarse){.sym{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Calculadora de riesgo</h1>
+
+  <section class="card">
+    <div class="rowh">
+      <div class="seg" id="mkt"><button type="button" data-m="spot" class="on">Spot</button><button type="button" data-m="futures">Futuros</button></div>
+      <input id="sym" class="sym" list="symlist" spellcheck="false" autocomplete="off" autocapitalize="characters" placeholder="BTCUSDT">
+    </div>
+    <div class="liveRow">
+      <span class="lbl">Precio actual</span>
+      <span class="livePrice" id="live">—</span>
+      <span class="status" id="status"><i class="dot"></i><span id="stxt">Conectando…</span></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <label for="entry"><span class="lh">Precio de entrada <button type="button" class="follow on" id="follow" title="Pulsa para fijar o seguir el precio en vivo">● En vivo</button></span></label>
+    <input id="entry" inputmode="decimal" autocomplete="off" placeholder="100" style="margin-bottom:12px">
+    <label>Precio del stop<input id="stop" inputmode="decimal" autocomplete="off" placeholder="95"></label>
+    <label>Dinero que arriesgas ($)<input id="risk" inputmode="decimal" autocomplete="off" placeholder="50"></label>
+  </section>
+
+  <p class="msg" id="msg">Elige un par e introduce el stop.</p>
+
+  <div id="out" hidden>
+    <section class="card">
+      <div class="top"><span>Dirección</span><span class="badge" id="dir"></span></div>
+      <div class="lbl">Tamaño de la posición</div>
+      <button class="val" id="pos" type="button"></button>
+      <div class="sub">
+        <div>Unidades<b id="units"></b></div>
+        <div>Distancia al stop<b id="dist"></b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Precios objetivo</h2>
+      <div id="targets"></div>
+    </section>
+    <p class="hint">Toca un precio o el tamaño para copiarlo.</p>
+  </div>
+</main>
+<datalist id="symlist"></datalist>
+<datalist id="symlistF"></datalist>
+<div class="toast" id="toast">Copiado</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const KEY='calcRiesgo.v2';
+const REST_S=['https://api.binance.com','https://data-api.binance.vision'];
+const REST_F='https://fapi.binance.com';
+const FALLBACK=['BTCUSDT','ETHUSDT','BNBUSDT','SOLUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','AVAXUSDT','LINKUSDT','TRXUSDT','DOTUSDT','LTCUSDT','BCHUSDT','NEARUSDT','UNIUSDT','ATOMUSDT','APTUSDT','ARBUSDT','OPUSDT','SUIUSDT','PEPEUSDT','SHIBUSDT','INJUSDT','FETUSDT','TONUSDT','HBARUSDT','AAVEUSDT','FILUSDT'];
+
+const state={symbol:'BTCUSDT',market:'spot',follow:true,price:null,lastPrice:null};
+
+/* ---------- utilidades ---------- */
+function num(v){
+  let s=String(v).trim().replace(/\s/g,'');
+  if(!s) return NaN;
+  s=s.includes('.')?s.replace(/,/g,''):s.replace(',','.');
+  return /^-?\d*\.?\d+$/.test(s)?parseFloat(s):NaN;
+}
+const nf=(n,max)=>n.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:max});
+const dec=p=>p>=1000?2:p>=1?4:p>=0.01?6:8;
+const raw=(n,d)=>String(+n.toFixed(d));
+function normalizeSymbol(v){
+  let s=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!s) return null;
+  if(!/(USDT|USDC|FDUSD|BUSD|BTC|ETH|BNB|EUR|TRY)$/.test(s)||s.length<=4&&!/USDT$/.test(s)) s+='USDT';
+  return s;
+}
+function saveState(){
+  try{localStorage.setItem(KEY,JSON.stringify({risk:$('risk').value,symbol:state.symbol,market:state.market}));}catch(_){}
+}
+
+/* ---------- copiar ---------- */
+let toastT;
+function toast(t){
+  const el=$('toast');el.textContent=t;el.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),1100);
+}
+function fallbackCopy(text,done){
+  const t=document.createElement('textarea');
+  t.value=text;t.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(t);t.select();
+  try{document.execCommand('copy');done();}catch(e){}
+  t.remove();
+}
+function copy(text){
+  const done=()=>toast('Copiado: '+text);
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,()=>fallbackCopy(text,done));
+  else fallbackCopy(text,done);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-copy]');
+  if(b) copy(b.dataset.copy);
+});
+
+/* ---------- cálculo ---------- */
+function setMsg(t,err){const m=$('msg');m.textContent=t;m.className='msg'+(err?' err':'');}
+function calc(){
+  const e=num($('entry').value),s=num($('stop').value),r=num($('risk').value);
+  $('out').hidden=true;
+  if(isNaN(e)){setMsg(state.follow?'Esperando el precio en vivo…':'Introduce el precio de entrada.');return;}
+  if(isNaN(s)||isNaN(r)){setMsg('Introduce el stop y el dinero que arriesgas.');return;}
+  if(e<=0||s<=0||r<=0){setMsg('Los valores tienen que ser mayores que cero.',true);return;}
+  if(e===s){setMsg('La entrada y el stop no pueden ser iguales.',true);return;}
+
+  const d=Math.abs(e-s),long=s<e;
+  const units=r/d,pos=units*e,pd=dec(e);
+
+  const dir=$('dir');
+  dir.textContent=long?'LARGO':'CORTO';
+  dir.className='badge '+(long?'long':'short');
+  const pb=$('pos');
+  pb.textContent=nf(pos,2)+' $';
+  pb.dataset.copy=raw(pos,2);
+  const ud=units>=100?2:units>=1?4:6;
+  $('units').textContent=nf(units,ud);
+  $('dist').textContent=nf(d/e*100,2)+' %';
+
+  const labels=['Ganas lo mismo que arriesgas','El doble de lo arriesgado','El triple de lo arriesgado'];
+  let html='';
+  for(let k=1;k<=3;k++){
+    const t=long?e+k*d:e-k*d;
+    if(t<=0){html+=`<div class="tg"><span class="k">${k}×</span><span class="g">${labels[k-1]} · +${nf(k*r,2)} $</span><span class="g">no alcanzable</span></div>`;continue;}
+    html+=`<div class="tg"><span class="k">${k}×</span><span class="g">${labels[k-1]} · +${nf(k*r,2)} $</span><button class="p" type="button" data-copy="${raw(t,pd)}">${nf(t,pd)}</button></div>`;
+  }
+  $('targets').innerHTML=html;
+  $('out').hidden=false;
+  setMsg('Si salta el stop pierdes '+nf(r,2)+' $.');
+}
+
+/* ---------- precio en vivo ---------- */
+async function fetchPrice(sym,market){
+  const urls=market==='futures'?[REST_F+'/fapi/v1/ticker/price']:REST_S.map(b=>b+'/api/v3/ticker/price');
+  let last;
+  for(const u of urls){
+    try{
+      const r=await fetch(u+'?symbol='+sym);
+      if(r.status===400) throw Object.assign(new Error('Par no encontrado'),{notFound:true});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const j=await r.json();
+      const p=parseFloat(j.price);
+      if(!isFinite(p)) throw new Error('Precio no válido');
+      return p;
+    }catch(e){
+      if(e.notFound) throw e;
+      last=e;
+    }
+  }
+  throw last||new Error('Sin conexión');
+}
+function setStatus(txt,cls){
+  $('stxt').textContent=txt;
+  $('status').className='status'+(cls?' '+cls:'');
+}
+function onPrice(p){
+  const live=$('live'),prev=state.lastPrice;
+  state.price=p;state.lastPrice=p;
+  live.textContent=nf(p,dec(p));
+  if(prev!=null&&p!==prev) live.className='livePrice '+(p>prev?'up':'down');
+  setStatus('En vivo','ok');
+  if(state.follow){
+    $('entry').value=raw(p,dec(p));
+    calc();
+  }
+}
+
+let timer=null,reqId=0,busy=false,gaveUp=false;
+async function tick(){
+  if(document.hidden||busy||gaveUp) return;
+  busy=true;
+  const id=reqId;
+  try{
+    const p=await fetchPrice(state.symbol,state.market);
+    if(id===reqId) onPrice(p);
+  }catch(e){
+    if(id===reqId){
+      if(e.notFound){
+        const sym=state.symbol;
+        const alt=state.market==='futures'?'1000'+sym:sym.replace(/^1000/,'');
+        let ok=false;
+        if(alt!==sym){
+          try{
+            const p=await fetchPrice(alt,state.market);
+            if(id===reqId){state.symbol=alt;$('sym').value=alt;saveState();onPrice(p);ok=true;}
+          }catch(_){}
+        }
+        if(!ok&&id===reqId){
+          gaveUp=true;
+          $('live').textContent='—';
+          setStatus('Par no encontrado en '+(state.market==='futures'?'Futuros':'Spot'),'err');
+        }
+      }else{
+        setStatus('Sin conexión con Binance','err');
+      }
+    }
+  }finally{busy=false;}
+}
+function startFeed(){
+  clearInterval(timer);
+  reqId++;gaveUp=false;busy=false;
+  state.price=null;state.lastPrice=null;
+  $('live').textContent='—';$('live').className='livePrice';
+  setStatus('Conectando…','');
+  if(state.follow){$('entry').value='';calc();}
+  tick();
+  timer=setInterval(tick,1000);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden) tick();});
+
+/* ---------- controles ---------- */
+function syncFollow(){
+  const f=$('follow');
+  f.classList.toggle('on',state.follow);
+  f.textContent=state.follow?'● En vivo':'Fijado';
+  f.title=state.follow?'Pulsa para fijar el precio de entrada':'Pulsa para volver a seguir el precio en vivo';
+}
+function syncMarket(){
+  document.querySelectorAll('#mkt button').forEach(b=>b.classList.toggle('on',b.dataset.m===state.market));
+  $('sym').setAttribute('list',state.market==='futures'?'symlistF':'symlist');
+}
+$('mkt').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-m]');
+  if(!b||b.dataset.m===state.market) return;
+  state.market=b.dataset.m;state.follow=true;
+  syncMarket();syncFollow();saveState();startFeed();
+});
+$('sym').addEventListener('focus',()=>$('sym').select());
+$('sym').addEventListener('keydown',e=>{if(e.key==='Enter') $('sym').blur();});
+$('sym').addEventListener('change',()=>{
+  const s=normalizeSymbol($('sym').value);
+  if(!s){$('sym').value=state.symbol;return;}
+  $('sym').value=s;
+  if(s===state.symbol&&!gaveUp) return;
+  state.symbol=s;state.follow=true;
+  syncFollow();saveState();startFeed();
+});
+$('follow').addEventListener('click',()=>{
+  state.follow=!state.follow;
+  syncFollow();
+  if(state.follow&&state.price!=null){$('entry').value=raw(state.price,dec(state.price));}
+  calc();
+});
+$('entry').addEventListener('input',()=>{
+  if(state.follow){state.follow=false;syncFollow();}
+  calc();
+});
+$('stop').addEventListener('input',calc);
+$('risk').addEventListener('input',()=>{saveState();calc();});
+
+/* ---------- lista de pares ---------- */
+async function loadSymbols(){
+  const fill=(sel,list)=>{$(sel).innerHTML=list.map(x=>`<option value="${x}">`).join('');};
+  fill('symlist',FALLBACK);
+  fill('symlistF',FALLBACK.concat(['1000PEPEUSDT','1000SHIBUSDT','1000BONKUSDT']));
+  const grab=async(urls,id)=>{
+    for(const url of urls){
+      try{
+        const r=await fetch(url);
+        if(!r.ok) continue;
+        const j=await r.json();
+        const list=j.filter(t=>/^[A-Z0-9]+USDT$/.test(t.symbol)&&!/(UP|DOWN)USDT$/.test(t.symbol))
+          .sort((a,b)=>b.quoteVolume-a.quoteVolume).slice(0,250).map(t=>t.symbol);
+        if(list.length){fill(id,list);return;}
+      }catch(e){}
+    }
+  };
+  grab(REST_S.map(b=>b+'/api/v3/ticker/24hr'),'symlist');
+  grab([REST_F+'/fapi/v1/ticker/24hr'],'symlistF');
+}
+
+/* ---------- arranque ---------- */
+try{
+  const saved=JSON.parse(localStorage.getItem(KEY)||'null');
+  if(saved){
+    if(saved.risk) $('risk').value=saved.risk;
+    if(saved.symbol) state.symbol=saved.symbol;
+    if(saved.market==='futures') state.market='futures';
+  }
+}catch(_){}
+$('sym').value=state.symbol;
+syncMarket();syncFollow();
+loadSymbols();
+startFeed();
+})();
+</script>
+</body>
+</html>
